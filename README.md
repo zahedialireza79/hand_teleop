@@ -146,9 +146,9 @@ arm_controller_node:
 
 ## 🛠️ Roadmap
 
-- [x] Hand gesture detection (MediaPipe)
-- [x] Left/right hand identification by label
-- [x] Motor mock controller
+- [In progress] Hand gesture detection (MediaPipe)
+- [ ] Left/right hand identification by label
+- [ ] Motor mock controller
 - [ ] ROS 2 nodes wired up
 - [ ] Real robot arm interface
 - [ ] Custom ROS 2 message `GestureCmd`
@@ -157,6 +157,3 @@ arm_controller_node:
 
 ---
 
-## 📄 License
-
-MIT
