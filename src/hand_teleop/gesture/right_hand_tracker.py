@@ -4,8 +4,11 @@ import cv2 as cv
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
+import os
+
 class RightHandTracker:
     def __init__(self, model_path="hand_landmarker.task"):
+        model_path = os.path.join(os.path.dirname(__file__), "hand_landmarker.task")
         base_options = python.BaseOptions(model_asset_path=model_path)
         options = vision.HandLandmarkerOptions(
             base_options=base_options,
