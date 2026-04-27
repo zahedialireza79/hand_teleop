@@ -7,7 +7,7 @@ from mediapipe.tasks.python import vision
 import os
 
 class RightHandTracker:
-    def __init__(self, model_path="hand_landmarker.task"):
+    def __init__(self):
         model_path = os.path.join(os.path.dirname(__file__), "hand_landmarker.task")
         base_options = python.BaseOptions(model_asset_path=model_path)
         options = vision.HandLandmarkerOptions(
@@ -27,11 +27,12 @@ class RightHandTracker:
     # Fist Detector
     # ---------------------------------------------------------
     def _is_fist(self, lm):
-        tips = [8, 12, 16, 20]  # MediaPipe identifies 21 points on the hand. Points 8, 12, 16, and 20 are the fingertips(thumb is 4 but not included.)
+        tips = [8, 12, 16, 20]  # MediaPipe identifies 21 points on the hand.
+                                 # Points 8, 12, 16, 20 are fingertips (thumb=4, not included).
         folded = 0
 
         for tip in tips:
-            if lm[tip].y > lm[tip - 2].y:  # Compare using the landmark on the middle of the finger. if the tip is lower, it is folded.
+            if lm[tip].y > lm[tip - 2].y:  # If tip is lower than mid-joint → finger is folded.
                 folded += 1
 
         return folded >= 3
@@ -48,21 +49,30 @@ class RightHandTracker:
     # ---------------------------------------------------------
     def update(self, frame):
         rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-        results = self.hands.process(rgb)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+        results = self.detector.detect(mp_image)
 
         # -----------------------------------------------------
         # If no hand → ALWAYS return 3 values
         # -----------------------------------------------------
-        if not results.multi_hand_landmarks:
+        if not results.hand_landmarks or not results.handedness:
             return None, "NONE", False
 
-        lm = results.multi_hand_landmarks[0].landmark
+        # Find the RIGHT hand by MediaPipe label
+        right_lm = None
+        for lm, handedness in zip(results.hand_landmarks, results.handedness):
+            if handedness[0].category_name == "Left":
+                right_lm = lm
+                break
 
-        # Extract cy landmark
-        cy = lm[9].y
+        if right_lm is None:
+            return None, "NONE", False
+
+        # Extract cy landmark (palm centre)
+        cy = right_lm[9].y
 
         # Determine if fist
-        is_fist = self._is_fist(lm)
+        is_fist = self._is_fist(right_lm)
 
         # If not calibrated yet → return 3 values
         if self.neutral_y is None:
