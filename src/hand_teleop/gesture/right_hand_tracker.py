@@ -1,15 +1,20 @@
 import mediapipe as mp
 import cv2 as cv
 
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
+
 class RightHandTracker:
-    def __init__(self):
-        self.mp_hands = mp.solutions.hands  # type: ignore
-        self.hands = self.mp_hands.Hands(   # type: ignore
-            max_num_hands=1,
-            model_complexity=1,
-            min_detection_confidence=0.5,
+    def __init__(self, model_path="hand_landmarker.task"):
+        base_options = python.BaseOptions(model_asset_path=model_path)
+        options = vision.HandLandmarkerOptions(
+            base_options=base_options,
+            num_hands=2,
+            min_hand_detection_confidence=0.5,
+            min_hand_presence_confidence=0.5,
             min_tracking_confidence=0.5
         )
+        self.detector = vision.HandLandmarker.create_from_options(options)
 
         # Calibration
         self.neutral_y = None
