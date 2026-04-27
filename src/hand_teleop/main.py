@@ -1,12 +1,13 @@
 import cv2 as cv
 from gesture.right_hand_tracker import RightHandTracker
-#from gesture.finger_counter import FingerCounter
+from gesture.finger_counter import FingerCounter
 
 def main():
     cap = cv.VideoCapture(0)
 
-    #finger_counter = FingerCounter()
+    finger_counter = FingerCounter()
     right_hand_tracker = RightHandTracker()
+    selected_motor = 0
 
     print("Camera Teleop using left and right hand:")
     print("\nLeft hand  = select motor (1→M0, 2→M1, 3→M2, 4→M3)")
@@ -28,6 +29,17 @@ def main():
         # -----------------------------
         # LEFT HAND → FINGER COUNT (MOTOR SELECT)
         # -----------------------------
+        fingers = finger_counter.count_fingers(frame)
+
+        if fingers == 1:
+            selected_motor = 0
+        elif fingers == 2:
+            selected_motor = 1
+        elif fingers == 3:
+            selected_motor = 2
+        elif fingers >= 4:
+            selected_motor = 3
+        # fingers == 0 → keep last selection
 
         # -----------------------------
         # RIGHT HAND → UP/DOWN + FIST
@@ -59,10 +71,10 @@ def main():
         # -----------------------------
         # UI LEFT
         # -----------------------------
-        # cv.putText(left_frame, f"Motor: M{selected_motor}", (10, 40),
-        #            cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        # cv.putText(left_frame, f"Fingers={fingers}", (10, 80),
-        #            cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+        cv.putText(left_frame, f"Motor : M{selected_motor}", (10, 40),
+                   cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv.putText(left_frame, f"Fingers: {fingers}", (10, 80),
+                   cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
 
         # -----------------------------
         # UI RIGHT
