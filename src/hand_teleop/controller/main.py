@@ -6,7 +6,7 @@ if __name__ == "__main__":
     
     try:
         # Initialize the motor
-        motor1 = Motor(port=PORT, motor_id=1, name="base")
+        motor1 = Motor(port=PORT, motor_id=3, name="base")
         
         # ── The Calibration Loop ──
         # Forces the user to get a successful calibration before proceeding
