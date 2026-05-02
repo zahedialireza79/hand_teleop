@@ -49,6 +49,7 @@ hand_teleop/                        ← ROS 2 workspace root
 │       └── setup.cfg
 ├── .gitignore
 ├── CONTRIBUTING.md
+├── Mechanical
 └── README.md
 ```
 
