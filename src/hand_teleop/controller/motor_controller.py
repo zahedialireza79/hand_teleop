@@ -137,64 +137,49 @@ class Motor:
         return t, stop_event
 
 
-# ── MAIN CALIBRATION & CONTROL LOOP ──────────────────────────────────
-def calibrate_motor(motor: Motor) -> bool:
-    """Handles the interactive calibration steps."""
-    print(f"\n── Calibrating '{motor.name}' (ID {motor.motor_id}) ──")
-    print("   Scale : 1000 raw = 90°")
-    print("   Tip   : watch the live values while moving\n")
+    # ── MAIN CALIBRATION & CONTROL LOOP ──────────────────────────────────
+    def calibrate(self) -> bool:
+        """Interactive calibration: Records home, min, and max positions."""
+        print(f"\n── Calibrating '{self.name}' (ID {self.motor_id}) ──")
+        self.disable_torque() 
 
-    motor.disable_torque()
+        # 1. HOME
+        print(f"   👉 Move '{self.name}' to HOME (0°)")
+        t, stop = self.start_live_display(reference_raw=2048) 
+        input("      Press ENTER when at home position...")
+        stop.set(); t.join()
+        raw_home = self.read_raw() 
 
-    # 1. HOME
-    print(f"   👉 Move '{motor.name}' to HOME (0°)")
-    t, stop = motor.start_live_display(reference_raw=2048)
-    input("      Press ENTER when at home position...")
-    stop.set(); t.join()
+        # 2. MIN
+        print(f"\n   👉 Move '{self.name}' to MINIMUM position")
+        t, stop = self.start_live_display(reference_raw=raw_home) 
+        input("      Press ENTER when at minimum position...")
+        stop.set(); t.join()
+        raw_min = self.read_raw() 
+        deg_min = (raw_min - raw_home) / self.RAW_PER_DEGREE 
+
+        # 3. MAX
+        print(f"\n   👉 Move '{self.name}' to MAXIMUM position")
+        t, stop = self.start_live_display(reference_raw=raw_home) 
+        input("      Press ENTER when at maximum position...")
+        stop.set(); t.join()
+        raw_max = self.read_raw() 
+        deg_max = (raw_max - raw_home) / self.RAW_PER_DEGREE 
+
+        if raw_min >= raw_max:
+            print("\n   ❌ Min >= Max — calibration failed.")
+            return False
+
+        self.cal = {
+            "home_raw": raw_home,
+            "raw_min": raw_min,
+            "raw_max": raw_max,
+            "deg_min": round(deg_min, 2),
+            "deg_max": round(deg_max, 2),
+        } 
+
+        print("\n   ✅ Calibration complete!")
+        self.go_home() 
+        return True
+
     
-    raw_home = motor.read_raw()
-    print(f"      ✅ Home recorded: raw={raw_home}")
-
-    # 2. MIN
-    print(f"\n   👉 Move '{motor.name}' to MINIMUM position")
-    t, stop = motor.start_live_display(reference_raw=raw_home)
-    input("      Press ENTER when at minimum position...")
-    stop.set(); t.join()
-    
-    raw_min = motor.read_raw()
-    deg_min = (raw_min - raw_home) / motor.RAW_PER_DEGREE
-    print(f"      ✅ Min recorded: raw={raw_min}  ({deg_min:+.1f}°)")
-
-    # 3. MAX
-    print(f"\n   👉 Move '{motor.name}' to MAXIMUM position")
-    t, stop = motor.start_live_display(reference_raw=raw_home)
-    input("      Press ENTER when at maximum position...")
-    stop.set(); t.join()
-    
-    raw_max = motor.read_raw()
-    deg_max = (raw_max - raw_home) / motor.RAW_PER_DEGREE
-    print(f"      ✅ Max recorded: raw={raw_max}  ({deg_max:+.1f}°)")
-
-    # Validate
-    if raw_min >= raw_max:
-        print("\n   ❌ Min >= Max — calibration failed.")
-        print("      Make sure min and max are on opposite sides of home.")
-        return False
-
-    # Save to motor instance
-    motor.cal = {
-        "home_raw": raw_home,
-        "raw_min": raw_min,
-        "raw_max": raw_max,
-        "deg_min": round(deg_min, 2),
-        "deg_max": round(deg_max, 2),
-    }
-
-    print("\n   ✅ Calibration complete!")
-    print(f"      Range: {motor.cal['deg_min']:+.1f}° to {motor.cal['deg_max']:+.1f}°")
-    
-    # Home the motor using the verified logic
-    motor.go_home()
-    return True
-
-

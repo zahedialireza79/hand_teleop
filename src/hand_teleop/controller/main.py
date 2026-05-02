@@ -12,7 +12,7 @@ if __name__ == "__main__":
         # Forces the user to get a successful calibration before proceeding
         calibrated = False
         while not calibrated:
-            calibrated = motor1.calibrate_motor(motor1)
+            calibrated = motor1.calibrate()
             if not calibrated:
                 retry = input("Do you want to try again? (y/n): ").strip().lower()
                 if retry != 'y':
@@ -43,7 +43,7 @@ if __name__ == "__main__":
                 motor1.go_home()
             elif cmd == "recal":
                 print("\n🔄 Starting recalibration...")
-                Motor.calibrate_motor(motor1) # Homing is baked into this function now
+                motor1.calibrate() # Homing is baked into this function now
             else:
                 try:
                     degrees = float(cmd)
