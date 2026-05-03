@@ -47,17 +47,32 @@ if __name__ == "__main__":
             break  
 
         
-        # ── The Calibration Loop ──
-        # Forces the user to get a successful calibration before proceeding
-        calibrated = False
-        while not calibrated:
-            calibrated = motor1.calibrate()
-            if not calibrated:
-                retry = input("Do you want to try again? (y/n): ").strip().lower()
-                if retry != 'y':
-                    print("Exiting...")
-                    exit(1)
+       # ── The Calibration Loop ──
+        print("\n" + "="*50)
+        print("🚀 STARTING MULTI-MOTOR CALIBRATION")
+        print("="*50)
 
+        for m_id, motor_obj in motors.items():
+            print(f"\n▶️ Calibrating Motor: {motor_obj.name} (ID: {m_id})")
+            
+            calibrated = False
+            while not calibrated:
+                # Calls the internal calibrate method using wrapped differences
+                calibrated = motor_obj.calibrate()
+                
+                if not calibrated:
+                    print(f"⚠️ Calibration failed for Motor {m_id}.")
+                    retry = input(f"Retry calibration for Motor {m_id}? (y/n): ").strip().lower()
+                    if retry != 'y':
+                        print("Terminating setup...")
+                        exit(1)
+            
+            print(f"✅ Motor {m_id} is ready.")
+
+        print("\n✨ All motors calibrated and homed successfully!")
+
+
+    
         # ── The Control Loop ──
         print("\n═══ CONTROL MODE ═══════════════════════════════════")
         print("  Commands:")
