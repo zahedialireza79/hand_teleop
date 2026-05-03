@@ -67,44 +67,72 @@ if __name__ == "__main__":
                         print("Terminating setup...")
                         exit(1)
             
-            print(f"✅ Motor {m_id} is ready.")
-
+            print(f"✅ Motor {m_id} is ready. \n")
+            print("-------------------------------\n")
         print("\n✨ All motors calibrated and homed successfully!")
 
 
     
-        # ── The Control Loop ──
+# ── The Control Loop ──
         print("\n═══ CONTROL MODE ═══════════════════════════════════")
-        print("  Commands:")
-        print("    <degrees>     move to angle  e.g. '45' or '-30'")
-        print("    r             read current position")
-        print("    home          move to 0°")
-        print("    recal         redo calibration")
-        print("    q             quit")
+        available_ids = list(motors.keys())  
+        print(f"  Available IDs : {available_ids}")
+        print("  Instructions  : Type an ID to select it, or 'all' for all motors.")
+        print("  Commands      : <degrees>, 'r', 'home', 'recal', 'q' (to exit)")
         print("════════════════════════════════════════════════════\n")
 
+        # Start with 'all' or the first available motor as default
+        active_ids = available_ids 
+
         while True:
-            cmd = input("→ ").strip().lower()
+            # Show which motors are currently being targeted
+            target_label = "ALL" if len(active_ids) == len(available_ids) else f"IDs {active_ids}"
+            cmd = input(f"[{target_label}] → ").strip().lower()
 
             if not cmd:
                 continue
-            elif cmd == "q":
+            
+            # 1. Selection Logic: Change which motor(s) we are talking to
+            if cmd == "all":
+                active_ids = available_ids
+                print(f"📢 Now targeting all motors: {active_ids}")
+                continue
+            elif cmd.isdigit() and int(cmd) in available_ids:
+                active_ids = [int(cmd)]
+                print(f"🎯 Now targeting Motor ID: {active_ids[0]}")
+                continue
+            
+            # 2. Exit Logic
+            if cmd == "q":
                 break
-            elif cmd == "r":
-                raw, deg = motor1.read_position()
-                print(f"  {motor1.name}: raw={raw}  {deg:+.1f}°")
-            elif cmd == "home":
-                motor1.go_home()
-            elif cmd == "recal":
-                print("\n🔄 Starting recalibration...")
-                motor1.calibrate() # Homing is baked into this function now
-            else:
-                try:
-                    degrees = float(cmd)
-                    motor1.move_to_degrees(degrees)
-                except ValueError:
-                    print("  ⚠️  Enter a number (degrees), 'r', 'home', 'recal', or 'q'")
+
+            # 3. Action Logic: Loop through the currently active IDs
+            for m_id in active_ids:
+                m_obj = motors[m_id]  
+
+                if cmd == "r":
+                    raw, deg = m_obj.read_position()  
+                    print(f"  [ID {m_id}] {m_obj.name}: raw={raw:4d}  {deg:+.1f}°")
+
+                elif cmd == "home":
+                    print(f"🏠 [ID {m_id}] Going home...")
+                    m_obj.go_home()  
+
+                elif cmd == "recal":
+                    print(f"🔄 [ID {m_id}] Starting recalibration...")
+                    m_obj.calibrate()  
+
+                else:
+                    try:
+                        degrees = float(cmd)
+                        m_obj.move_to_degrees(degrees)  
+                    except ValueError:
+                        if m_id == active_ids[0]: # Only print warning once
+                            print("  ⚠️ Enter degrees, ID, 'all', 'r', 'home', 'recal', or 'q'")
+                        break
 
     finally:
-        if 'motor' in locals():
-            motor1.close()
+        # Close all initialized motors
+        if 'motors' in locals():
+            for m_id, m_obj in motors.items():  
+                m_obj.close()  
