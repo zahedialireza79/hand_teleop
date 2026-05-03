@@ -11,6 +11,7 @@ class MotorIDSearch:
             raise RuntimeError("❌ Connection failed.")
 
     def scan(self):
+        print("Looking for the IDs of motors .... \n")
         found = []
         for i in range(1, 254):
             _, res, _ = self.pkh.ping(self.ph, i)
