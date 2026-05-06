@@ -1,6 +1,7 @@
 import time
 import threading
 import scservo_sdk as scs
+from motor_bus import MotorBus
 
 class Motor:
     # ── Register addresses (STS3215) ──
@@ -14,15 +15,12 @@ class Motor:
     RAW_PER_DEGREE  = 1000 / 90
     SIGN_BIT        = 15
 
-    def __init__(self, port, baudrate=1_000_000, motor_id=1, name="base", protocol=0):
-        self.port = port
-        self.baudrate = baudrate
+    def __init__(self, bus: MotorBus, motor_id: int, name: str):
+        self.ph       = bus.ph    
+        self.pkh      = bus.pkh  
         self.motor_id = motor_id
-        self.name = name
-        
-        self.ph = scs.PortHandler(port)
-        self.pkh = scs.PacketHandler(protocol)
-        
+        self.name     = name
+
         self.cal = {} # Stores home_raw, raw_min, raw_max, etc.
 
         if not self.ph.openPort():
