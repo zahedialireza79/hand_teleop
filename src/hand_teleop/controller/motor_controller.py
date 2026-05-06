@@ -23,18 +23,11 @@ class Motor:
 
         self.cal = {} # Stores home_raw, raw_min, raw_max, etc.
 
-        if not self.ph.openPort():
-            raise RuntimeError(f"❌ Cannot open port: {self.port}")
-        if not self.ph.setBaudRate(self.baudrate):
-            raise RuntimeError("❌ Cannot set baudrate")
-        
-        print(f"✅ Connected to '{self.name}' on {self.port}")
+
 
     def close(self):
         """Safely shut down the motor."""
         self.disable_torque()
-        self.ph.closePort()
-        print("🔌 Port closed.")
 
     # ── Conversion Methods ──
     def _encode_sign_magnitude(self, value: int) -> int:

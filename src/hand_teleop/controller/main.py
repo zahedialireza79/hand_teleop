@@ -1,15 +1,19 @@
+from motor_bus import MotorBus
 from motor_controller import Motor
 from motor_id_search import MotorIDSearch
+
 if __name__ == "__main__":
     PORT = "/dev/ttyACM0"
 
+    # ── Open the serial bus ONCE ──
+    bus = MotorBus(port=PORT)
     
     try:
-        #Check the number of motors
+        # ── Check the number of motors ──
         scanner = MotorIDSearch(PORT)
-        found_ids = scanner.scan() # Returns a list like [1, 3, 5]
+        found_ids = scanner.scan()  # Returns a list like [1, 3, 5]
         
-        motors = {} # Dictionary to store motor objects: {id: MotorObject}
+        motors = {}  # Dictionary to store motor objects: {id: MotorObject}
 
         print("\nWhich motor(s) do you want to initialize?")
         print("  - 'all' to initialize everything found")
@@ -23,7 +27,7 @@ if __name__ == "__main__":
             target_ids = []
 
             if cmd == "all":
-                target_ids = found_ids # Use every ID found during the scan 
+                target_ids = found_ids  # Use every ID found during the scan 
             else:
                 try:
                     # Convert "1, 3" string into a list of integers [1, 3] 
@@ -39,15 +43,15 @@ if __name__ == "__main__":
                     print("⚠️ Invalid format. Please use numbers separated by commas.")
                     continue
 
-            # Perform the dynamic initialization 
+            # ── Dynamic initialization using the shared bus ──
             for m_id in target_ids:
                 print(f"⚙️ Initializing Motor ID: {m_id}...")
-                motors[m_id] = Motor(port=PORT, motor_id=m_id, name=f"motor_{m_id}")
+                motors[m_id] = Motor(bus=bus, motor_id=m_id, name=f"motor_{m_id}")
             
             break  
 
         
-       # ── The Calibration Loop ──
+        # ── The Calibration Loop ──
         print("\n" + "="*50)
         print("🚀 STARTING MULTI-MOTOR CALIBRATION")
         print("="*50)
@@ -57,7 +61,7 @@ if __name__ == "__main__":
             
             calibrated = False
             while not calibrated:
-                # Calls the internal calibrate method using wrapped differences
+                # Calls the internal calibrate method
                 calibrated = motor_obj.calibrate()
                 
                 if not calibrated:
@@ -67,13 +71,12 @@ if __name__ == "__main__":
                         print("Terminating setup...")
                         exit(1)
             
-            print(f"✅ Motor {m_id} is ready. \n")
+            print(f"✅ Motor {m_id} is ready.\n")
             print("-------------------------------\n")
         print("\n✨ All motors calibrated and homed successfully!")
 
-
     
-# ── The Control Loop ──
+        # ── The Control Loop ──
         print("\n═══ CONTROL MODE ═══════════════════════════════════")
         available_ids = list(motors.keys())  
         print(f"  Available IDs : {available_ids}")
@@ -81,7 +84,7 @@ if __name__ == "__main__":
         print("  Commands      : <degrees>, 'r', 'home', 'recal', 'q' (to exit)")
         print("════════════════════════════════════════════════════\n")
 
-        # Start with 'all' or the first available motor as default
+        # Start with 'all' as default
         active_ids = available_ids 
 
         while True:
@@ -127,12 +130,15 @@ if __name__ == "__main__":
                         degrees = float(cmd)
                         m_obj.move_to_degrees(degrees)  
                     except ValueError:
-                        if m_id == active_ids[0]: # Only print warning once
+                        if m_id == active_ids[0]:  # Only print warning once
                             print("  ⚠️ Enter degrees, ID, 'all', 'r', 'home', 'recal', or 'q'")
                         break
 
     finally:
-        # Close all initialized motors
+        # Disable torque on all motors
         if 'motors' in locals():
             for m_id, m_obj in motors.items():  
-                m_obj.close()  
+                m_obj.close()  # just disables torque now
+        
+        # Close the bus ONCE at the end
+        bus.close()
