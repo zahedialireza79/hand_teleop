@@ -1,7 +1,7 @@
 from motor_controller import Motor
 from motor_id_search import MotorIDSearch
 if __name__ == "__main__":
-    PORT = "/dev/tty.usbmodem5A4B0486761"
+    PORT = "/dev/ttyACM0"
 
     
     try:
