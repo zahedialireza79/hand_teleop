@@ -1,6 +1,6 @@
 import cv2 as cv
-from gesture.right_hand_tracker import RightHandTracker
-from gesture.finger_counter import FingerCounter
+from right_hand_tracker import RightHandTracker
+from finger_counter import FingerCounter
 
 def main():
     cap = cv.VideoCapture(0)
