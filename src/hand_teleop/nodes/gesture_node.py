@@ -67,11 +67,11 @@ class GestureNode(Node):
 
         if fingers == 1:
             self.selected_motor = 1
-        if fingers == 2:
+        elif fingers == 2:
             self.selected_motor = 2
-        if fingers == 3:
+        elif fingers == 3:
             self.selected_motor = 3
-        if fingers == 4:
+        elif fingers == 4:
             self.selected_motor = 4
         else:
             self.selected_motor = 0

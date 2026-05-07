@@ -57,4 +57,4 @@ class FingerCounter:
         if left_lm[4].x > left_lm[3].x:
             count += 1
 
-        return count
+        return count if 1 <= count <= 4 else 0
