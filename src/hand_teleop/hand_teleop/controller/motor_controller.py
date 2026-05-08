@@ -1,7 +1,7 @@
 import time
 import threading
 import scservo_sdk as scs
-from motor_bus import MotorBus
+from hand_teleop.controller.motor_bus import MotorBus
 
 class Motor:
     # ── Register addresses (STS3215) ──
@@ -20,13 +20,10 @@ class Motor:
         self.pkh      = bus.pkh  
         self.motor_id = motor_id
         self.name     = name
-
-        self.cal = {} # Stores home_raw, raw_min, raw_max, etc.
-
-
+        self.cal      = {}  # Stores home_raw, raw_min, raw_max, etc.
 
     def close(self):
-        """Safely shut down the motor."""
+        """Safely shut down the motor — only disables torque, does NOT close port."""
         self.disable_torque()
 
     # ── Conversion Methods ──
@@ -89,88 +86,118 @@ class Motor:
 
         # Clamp to bounds
         degrees = max(self.cal["deg_min"], min(self.cal["deg_max"], degrees))
-        raw = self.degrees_to_raw(degrees)
-        raw = max(self.cal["raw_min"], min(self.cal["raw_max"], raw))
-        
+        raw     = self.degrees_to_raw(degrees)
+        raw     = max(self.cal["raw_min"], min(self.cal["raw_max"], raw))
+
         print(f"  → {self.name}: {degrees:+.1f}° (raw {raw})")
         self.move_to_raw(raw, velocity)
 
+    # ── Step Method (used by ROS arm_controller_node) ─────────────────────
+    def step(self, direction: str, step_deg: float = 5.0):
+        """
+        Move one step in a direction from the current position.
+        Called by the ROS node every time a fist + direction command arrives.
+        Automatically clamped to calibrated min/max limits.
+
+        Args:
+            direction: "UP" or "DOWN"
+            step_deg:  degrees per step (default 5.0)
+        """
+        if not self.cal:
+            print(f"⚠️ [{self.name}] Not calibrated — ignoring step command")
+            return
+
+        # Read current position
+        raw_now = self.read_raw()
+        if raw_now == -1:
+            print(f"❌ [{self.name}] Read error — cannot step")
+            return
+
+        deg_now = self.raw_to_degrees(raw_now)
+
+        # Calculate new position
+        if direction == "UP":
+            new_deg = deg_now + step_deg
+        elif direction == "DOWN":
+            new_deg = deg_now - step_deg
+        else:
+            return  # "NONE" — do nothing
+
+        # move_to_degrees handles clamping to min/max
+        self.move_to_degrees(new_deg)
+
     def go_home(self, velocity: int = 200):
-        """Explicitly handles the homing logic to the recorded center point."""
+        """Move to the recorded home position (0°)."""
         if not self.cal:
             print("⚠️ Cannot go home: Calibration missing.")
             return
-        
+
         print(f"\n   🏠 Returning to home...")
         self.enable_torque()
         self.move_to_raw(self.cal["home_raw"], velocity)
-        time.sleep(2) # Give motor time to travel
-        
+        time.sleep(2)
+
         raw_now, deg_now = self.read_position()
         print(f"      Position now: raw={raw_now}  ({deg_now:+.1f}°)")
 
-    # ── Live Display Helper ──
+    # ── Live Display Helper ────────────────────────────────────────────────
     def start_live_display(self, reference_raw: int) -> tuple[threading.Thread, threading.Event]:
         stop_event = threading.Event()
-        
+
         def _display():
             while not stop_event.is_set():
                 raw = self.read_raw()
                 if raw != -1:
-                    # Temporary conversion for live view
                     deg = (raw - reference_raw) / self.RAW_PER_DEGREE
                     print(f"\r  📍 raw={raw:4d}  {deg:+7.1f}°    ", end="", flush=True)
                 time.sleep(0.3)
-            print() 
+            print()
 
         t = threading.Thread(target=_display, daemon=True)
         t.start()
         return t, stop_event
 
-
-    # ── MAIN CALIBRATION & CONTROL LOOP ──────────────────────────────────
+    # ── Calibration ───────────────────────────────────────────────────────
     def calibrate(self) -> bool:
         """Interactive calibration: Records home, min, and max positions."""
         print(f"\n── Calibrating '{self.name}' (ID {self.motor_id}) ──")
-        self.disable_torque() 
+        self.disable_torque()
 
         # 1. HOME
         print(f"   👉 Move '{self.name}' to HOME (0°)")
-        t, stop = self.start_live_display(reference_raw=2048) 
+        t, stop = self.start_live_display(reference_raw=2048)
         input("      Press ENTER when at home position...")
         stop.set(); t.join()
-        raw_home = self.read_raw() 
+        raw_home = self.read_raw()
 
         # 2. MIN
         print(f"\n   👉 Move '{self.name}' to MINIMUM position")
-        t, stop = self.start_live_display(reference_raw=raw_home) 
+        t, stop = self.start_live_display(reference_raw=raw_home)
         input("      Press ENTER when at minimum position...")
         stop.set(); t.join()
-        raw_min = self.read_raw() 
-        deg_min = (raw_min - raw_home) / self.RAW_PER_DEGREE 
+        raw_min = self.read_raw()
+        deg_min = (raw_min - raw_home) / self.RAW_PER_DEGREE
 
         # 3. MAX
         print(f"\n   👉 Move '{self.name}' to MAXIMUM position")
-        t, stop = self.start_live_display(reference_raw=raw_home) 
+        t, stop = self.start_live_display(reference_raw=raw_home)
         input("      Press ENTER when at maximum position...")
         stop.set(); t.join()
-        raw_max = self.read_raw() 
-        deg_max = (raw_max - raw_home) / self.RAW_PER_DEGREE 
+        raw_max = self.read_raw()
+        deg_max = (raw_max - raw_home) / self.RAW_PER_DEGREE
 
         if raw_min >= raw_max:
             print("\n   ❌ Min >= Max — calibration failed.")
             return False
 
         self.cal = {
-            "home_raw": raw_home,
-            "raw_min": raw_min,
-            "raw_max": raw_max,
-            "deg_min": round(deg_min, 2),
-            "deg_max": round(deg_max, 2),
-        } 
+            "home_raw" : raw_home,
+            "raw_min"  : raw_min,
+            "raw_max"  : raw_max,
+            "deg_min"  : round(deg_min, 2),
+            "deg_max"  : round(deg_max, 2),
+        }
 
         print("\n   ✅ Calibration complete!")
-        self.go_home() 
+        self.go_home()
         return True
-
-    
