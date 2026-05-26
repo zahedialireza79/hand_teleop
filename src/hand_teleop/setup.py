@@ -10,9 +10,9 @@ setup(
     ('share/ament_index/resource_index/packages',
         ['resource/' + package_name]),
     ('share/' + package_name, ['package.xml']),
-    # include the mediapipe model file
-    (f'lib/python3.12/site-packages/{package_name}/gesture',
-        ['hand_teleop/gesture/hand_landmarker.task']),
+    # ADD THESE TWO LINES:
+    ('share/' + package_name + '/urdf',   ['urdf/arm.urdf']),
+    ('share/' + package_name + '/launch', ['launch/display.launch.py']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
